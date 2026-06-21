@@ -1,13 +1,11 @@
 import os
-import base64
+import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from google import genai
 
 app = FastAPI()
 
-# Permite conexões do seu site sem bloqueios de segurança
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,13 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-API_KEY = os.getenv("GEMINI_API_KEY", "")
-client = genai.Client(api_key=API_KEY)
-
-class PromptRequest(BaseModel):
-    prompt: str
-
-# 1. ROTA DE LIMITES (Garante os créditos no painel)
+# ROTA DE LIMITES (Créditos no painel)
 @app.get("/api/get_limit")
 @app.get("/get_limit")
 def get_limit():
@@ -33,48 +25,41 @@ def get_limit():
         "monthly_usage": 0
     }
 
-# 2. ROTA DE GERAÇÃO COM O MOTOR DE MÚSICA LYRIA
+class PromptRequest(BaseModel):
+    prompt: str
+
+# ROTA DE GERAÇÃO REAL DE MÚSICA (Conectando com o motor do Suno/Chirp)
 @app.post("/generate")
 @app.post("/api/generate")
 def gerar_musica(request: PromptRequest):
     try:
-        print(f"Enviando solicitação de áudio para o Lyria: {request.prompt}")
+        # Endereço do servidor oficial que processa o Suno de forma profissional
+        # (Você pode usar serviços como GoAPI, PiAPI ou criar sua própria instância da Suno-API)
+        SUNO_API_URL = "https://goapi.xyz"
         
-        # Faz a chamada oficial para o modelo de áudio generativo do Google
-        response = client.models.generate_content(
-            model="lyria-3-pro-preview",
-            contents=f"Crie uma musica completa com base nisto: {request.prompt}"
-        )
+        # Cabeçalhos com o token de autorização da API de música
+        headers = {
+            "Content-Type": "application/json",
+            "X-API-Key": "COLE_AQUI_SUA_API_KEY_DE_MUSICA"
+        }
         
-        audio_base64 = ""
-        letra_gerada = "Letra indisponível para este estilo."
+        payload = {
+            "prompt": request.prompt,
+            "model": "chirp-v3-5", # Versão oficial de alta qualidade do Suno
+            "tags": "gospel, r&b, emotional",
+            "title": "Nova Composição"
+        }
         
-        # Varre a resposta do Google procurando pelos bytes de som e texto da letra
-        for part in response.parts:
-            if part.inline_data:
-                # Transforma os bytes do arquivo de som em um formato legível por navegadores web
-                audio_base64 = base64.b64encode(part.inline_data.data).decode('utf-8')
-            if part.text:
-                letra_gerada = part.text
-
-        if not audio_base64:
-            raise HTTPException(status_code=500, detail="O servidor gerou a resposta, mas nao enviou os dados de som.")
-
-        # Criamos o link direto em memória (Data URI) para o player do seu site tocar na hora
-        url_audio_final = f"data:audio/mp3;base64,{audio_base64}"
+        response = requests.post(SUNO_API_URL, json=payload, headers=headers)
         
-        # Devolve os dados estruturados no formato do Suno, injetando o áudio real do Lyria
-        return [
-            {
-                "id": "lyria-task-generation",
-                "video_url": "",
-                "audio_url": url_audio_final,
-                "image_url": "https://unsplash.com",
-                "title": f"Lyria - {request.prompt[:15]}...",
-                "lyric": letra_gerada,
-                "status": "complete"
-            }
-        ]
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail="Erro ao chamar o motor Suno.")
+            
+        dados_suno = response.json()
+        
+        # Retorna os dados com os links de áudio .mp3 e imagem reais gerados pelo Suno
+        return dados_suno.get("data", [])
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
