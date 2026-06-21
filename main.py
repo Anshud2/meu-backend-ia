@@ -33,7 +33,7 @@ class PromptRequest(BaseModel):
     class Config:
         extra = Extra.allow
 
-# 2. ROTA DE GERACAO CORRIGIDA COM O MODELO OFICIAL DA IMAGEM
+# 2. ROTA DE GERACAO ALINHADA COM O MODELO ATIVO DA AIMLAPI
 @app.post("/generate")
 @app.post("/api/generate")
 @app.post("/custom_generate")
@@ -41,16 +41,16 @@ class PromptRequest(BaseModel):
 def gerar_musica(request: PromptRequest):
     try:
         # URL oficial v2 da AIMLAPI para geração de mídias de áudio
-        URL_AIML = "https://aimlapi.com"
+        URL_AIML = "https://api.aimlapi.com/v2/generate/audio"
         
         headers = {
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json"
         }
         
-        # Nome do modelo exatamente igual ao que está na foto da documentação
+        # Identificador oficial exato e atualizado da documentação deles
         payload = {
-            "model": "minimax-music",
+            "model": "minimax/music-2.0",
             "prompt": request.prompt
         }
         
@@ -62,7 +62,8 @@ def gerar_musica(request: PromptRequest):
             
         dados_recebidos = response.json()
         
-        # Formata a resposta para o player do seu site ler os links de áudio de primeira
+        # Formata a resposta em lista para que a estrutura visual do seu site 
+        # capture o ID da tarefa e processe o carregamento automático da música
         if isinstance(dados_recebidos, list):
             return dados_recebidos
         elif "data" in dados_recebidos:
