@@ -22,7 +22,7 @@ client = genai.Client(api_key=API_KEY)
 class PromptRequest(BaseModel):
     prompt: str
 
-@app.post("/gerar-musica")
+@app.post("/generate")
 def gerar_musica(request: PromptRequest):
     try:
         # Modelo oficial que testamos e funcionou sem erros
