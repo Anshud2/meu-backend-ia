@@ -14,7 +14,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ROTA DE LIMITES (Créditos no painel)
+# Pega a nova chave que você acabou de cadastrar no painel do Render
+API_KEY = os.getenv("SUNO_API_KEY", "")
+
+# 1. ROTA DE CREDITOS (Mostra 1000 créditos livres no seu painel)
 @app.get("/api/get_limit")
 @app.get("/get_limit")
 def get_limit():
@@ -28,37 +31,36 @@ def get_limit():
 class PromptRequest(BaseModel):
     prompt: str
 
-# ROTA DE GERAÇÃO REAL DE MÚSICA (Conectando com o motor do Suno/Chirp)
+# 2. ROTA DE GERACAO CONECTADA COM A AIMLAPI (SUNO v3.5)
 @app.post("/generate")
 @app.post("/api/generate")
 def gerar_musica(request: PromptRequest):
     try:
-        # Endereço do servidor oficial que processa o Suno de forma profissional
-        # (Você pode usar serviços como GoAPI, PiAPI ou criar sua própria instância da Suno-API)
-        SUNO_API_URL = "https://goapi.xyz"
+        # URL oficial de geracao da AIMLAPI para o modelo do Suno
+        URL_AIML = "https://aimlapi.com"
         
-        # Cabeçalhos com o token de autorização da API de música
         headers = {
-            "Content-Type": "application/json",
-            "X-API-Key": "COLE_AQUI_SUA_API_KEY_DE_MUSICA"
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json"
         }
         
         payload = {
             "prompt": request.prompt,
-            "model": "chirp-v3-5", # Versão oficial de alta qualidade do Suno
-            "tags": "gospel, r&b, emotional",
-            "title": "Nova Composição"
+            "model": "suno-v3.5",
+            "custom": False
         }
         
-        response = requests.post(SUNO_API_URL, json=payload, headers=headers)
+        # Envia o pedido de musica para a AIMLAPI
+        response = requests.post(URL_AIML, json=payload, headers=headers)
         
         if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail="Erro ao chamar o motor Suno.")
+            raise HTTPException(status_code=response.status_code, detail=f"Erro AIMLAPI: {response.text}")
             
-        dados_suno = response.json()
+        dados_recebidos = response.json()
         
-        # Retorna os dados com os links de áudio .mp3 e imagem reais gerados pelo Suno
-        return dados_suno.get("data", [])
+        # A AIMLAPI devolve a lista de midias exatamente no padrao que seu site precisa
+        # incluindo os links reais de audio (.mp3), letra e imagem da capa!
+        return dados_recebidos
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
