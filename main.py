@@ -14,10 +14,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Pega o token da AIMLAPI salvo nas variáveis de ambiente do Render
+# Pega o token da AIMLAPI salvo no painel do Render
 API_KEY = os.getenv("SUNO_API_KEY", "")
 
-# 1. ROTA DE CREDITOS (Garante a estabilidade e exibe 1000 no painel)
+# 1. ROTA DE CREDITOS (Garante os créditos livres no painel)
 @app.get("/api/get_limit")
 @app.get("/get_limit")
 def get_limit():
@@ -33,29 +33,27 @@ class PromptRequest(BaseModel):
     class Config:
         extra = Extra.allow
 
-# 2. ROTA DE GERACAO CORRIGIDA COM O ENDPOINT PADRÃO DA AIMLAPI
+# 2. ROTA DE GERACAO ALINHADA COM A DOCUMENTAÇÃO V2 DA AIMLAPI
 @app.post("/generate")
 @app.post("/api/generate")
 @app.post("/custom_generate")
 @app.post("/api/custom_generate")
 def gerar_musica(request: PromptRequest):
     try:
-        # Nova URL limpa e simplificada adaptada aos servidores ativos deles
-        URL_AIML = "https://aimlapi.com"
+        # URL oficial v2 da AIMLAPI para geração de mídias de áudio
+        URL_AIML = "https://api.aimlapi.com/v2/generate/audio"
         
         headers = {
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json"
         }
         
-        # Payload com o parâmetro de texto "gpt_description_prompt" que eles exigem no v3.5
+        # Estrutura exata exigida pelo servidor deles para rodar o Suno AI
         payload = {
-            "gpt_description_prompt": request.prompt,
-            "mv": "chirp-v3-5",
-            "make_instrumental": False
+            "model": "suno/chirp-v3-5",
+            "prompt": request.prompt
         }
         
-        # Envia a requisição POST para os servidores da AIMLAPI
         response = requests.post(URL_AIML, json=payload, headers=headers)
         
         if response.status_code != 200:
@@ -63,7 +61,7 @@ def gerar_musica(request: PromptRequest):
             
         dados_recebidos = response.json()
         
-        # Retorna a lista mapeada de áudio direto para o seu frontend processar
+        # Formata a resposta para o player do seu site ler os links de áudio de primeira
         if isinstance(dados_recebidos, list):
             return dados_recebidos
         elif "data" in dados_recebidos:
