@@ -14,10 +14,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Pega o token da AIMLAPI salvo no painel do Render
+# Pega o token da AIMLAPI salvo no seu painel do Render
 API_KEY = os.getenv("SUNO_API_KEY", "")
 
-# 1. ROTA DE CREDITOS (Garante os créditos livres no painel)
+# 1. ROTA DE CREDITOS (Garante o funcionamento estável do seu painel)
 @app.get("/api/get_limit")
 @app.get("/get_limit")
 def get_limit():
@@ -33,7 +33,7 @@ class PromptRequest(BaseModel):
     class Config:
         extra = Extra.allow
 
-# 2. ROTA DE GERACAO ALINHADA COM A DOCUMENTAÇÃO V2 DA AIMLAPI
+# 2. ROTA DE GERACAO CORRIGIDA COM O MODELO OFICIAL DA IMAGEM
 @app.post("/generate")
 @app.post("/api/generate")
 @app.post("/custom_generate")
@@ -41,19 +41,20 @@ class PromptRequest(BaseModel):
 def gerar_musica(request: PromptRequest):
     try:
         # URL oficial v2 da AIMLAPI para geração de mídias de áudio
-        URL_AIML = "https://api.aimlapi.com/v2/generate/audio"
+        URL_AIML = "https://aimlapi.com"
         
         headers = {
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json"
         }
         
-        # Estrutura exata exigida pelo servidor deles para rodar o Suno AI
+        # Nome do modelo exatamente igual ao que está na foto da documentação
         payload = {
-            "model": "suno/chirp-v3-5",
+            "model": "minimax-music",
             "prompt": request.prompt
         }
         
+        # Envia a requisição POST para o servidor da AIMLAPI
         response = requests.post(URL_AIML, json=payload, headers=headers)
         
         if response.status_code != 200:
