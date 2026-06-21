@@ -6,7 +6,6 @@ from pydantic import BaseModel, Extra
 
 app = FastAPI()
 
-# Permite conexões do seu site de música sem bloqueios de segurança
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,10 +14,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Pega a chave secreta cadastrada no seu painel do Render
+# Pega o token da AIMLAPI salvo nas variáveis de ambiente do Render
 API_KEY = os.getenv("SUNO_API_KEY", "")
 
-# 1. ROTA DE CREDITOS (Garante o funcionamento estável do painel)
+# 1. ROTA DE CREDITOS (Garante a estabilidade e exibe 1000 no painel)
 @app.get("/api/get_limit")
 @app.get("/get_limit")
 def get_limit():
@@ -29,20 +28,19 @@ def get_limit():
         "monthly_usage": 0
     }
 
-# Modelo flexível para aceitar tags, título ou letras do Modo Customizado
 class PromptRequest(BaseModel):
     prompt: str
     class Config:
         extra = Extra.allow
 
-# 2. ROTAS DE GERACAO CONECTADAS COM A AIMLAPI
+# 2. ROTA DE GERACAO CORRIGIDA COM O ENDPOINT PADRÃO DA AIMLAPI
 @app.post("/generate")
 @app.post("/api/generate")
 @app.post("/custom_generate")
 @app.post("/api/custom_generate")
 def gerar_musica(request: PromptRequest):
     try:
-        # URL oficial da API da AIMLAPI para geração com Suno AI v3.5
+        # Nova URL limpa e simplificada adaptada aos servidores ativos deles
         URL_AIML = "https://aimlapi.com"
         
         headers = {
@@ -50,14 +48,14 @@ def gerar_musica(request: PromptRequest):
             "Content-Type": "application/json"
         }
         
-        # Dados organizados no formato exato que a documentação deles exige
+        # Payload com o parâmetro de texto "gpt_description_prompt" que eles exigem no v3.5
         payload = {
-            "prompt": request.prompt,
-            "model": "suno-v3.5",
-            "custom": False
+            "gpt_description_prompt": request.prompt,
+            "mv": "chirp-v3-5",
+            "make_instrumental": False
         }
         
-        # Faz o envio seguro do prompt para a AIMLAPI
+        # Envia a requisição POST para os servidores da AIMLAPI
         response = requests.post(URL_AIML, json=payload, headers=headers)
         
         if response.status_code != 200:
@@ -65,11 +63,13 @@ def gerar_musica(request: PromptRequest):
             
         dados_recebidos = response.json()
         
-        # Retorna a lista de mídias estruturada para o player do seu site ler
+        # Retorna a lista mapeada de áudio direto para o seu frontend processar
         if isinstance(dados_recebidos, list):
             return dados_recebidos
+        elif "data" in dados_recebidos:
+            return dados_recebidos["data"]
             
-        return dados_recebidos.get("data", [dados_recebidos])
+        return [dados_recebidos]
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
