@@ -1,5 +1,5 @@
 ```python
-   """
+   
    Suno Studio — Backend + Frontend de geração de música via AIMLAPI.
 
    IMPORTANTE:
