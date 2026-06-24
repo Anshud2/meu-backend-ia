@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suno Studio — Gerador de Música IA</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      color: #fff;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container { max-width: 720px; margin: 0 auto; }
+    h1 {
+      font-size: 2.5rem; margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle { color: #a0a0c0; margin-bottom: 2rem; }
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 1.5rem;
+      backdrop-filter: blur(10px);
+    }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+    input[type="text"], textarea, select {
+      width: 100%;
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+      font-family: inherit;
+      margin-bottom: 1rem;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .examples {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;
+    }
+    .example-chip {
+      background: rgba(245, 87, 108, 0.15);
+      border: 1px solid rgba(245, 87, 108, 0.3);
+      padding: 0.4rem 0.8rem;
+      border-radius: 16px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .example-chip:hover { background: rgba(245, 87, 108, 0.3); }
+    .checkbox-row {
+      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;
+    }
+    button {
+      background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+      color: #fff;
+      border: none;
+      padding: 0.85rem 2rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s;
+      width: 100%;
+    }
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px rgba(245, 87, 108, 0.3);
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    #status {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      display: none;
+    }
+    #status.show { display: block; }
+    #status.error { background: rgba(245, 87, 108, 0.15); border: 1px solid rgba(245, 87, 108, 0.3); }
+    #status.success { background: rgba(72, 219, 128, 0.15); border: 1px solid rgba(72, 219, 128, 0.3); }
+    #result { margin-top: 1rem; }
+    audio { width: 100%; margin-top: 0.5rem; }
+    .download-link {
+      display: inline-block;
+      margin-top: 0.5rem;
+      color: #f5576c;
+      text-decoration: none;
+    }
+    .download-link:hover { text-decoration: underline; }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎵 Suno Studio</h1>
+    <p class="subtitle">Gerador de Música IA · Powered by AIMLAPI (MiniMax Music 2.0)</p>
+
+    <div class="card">
+      <!-- URL do backend — troque pela URL do Render após o deploy -->
+      <label for="prompt">Descrição da música</label>
+      <div class="examples">
+        <span class="example-chip" data-prompt="Lo-fi hip hop com piano suave e chuva ao fundo">Lo-fi hip hop piano</span>
+        <span class="example-chip" data-prompt="Rock épico dos anos 80 com guitarras distorcidas e bateria potente">Rock anos 80</span>
+        <span class="example-chip" data-prompt="Música eletrônica dançante estilo synthwave com bass pesado">Synthwave</span>
+        <span class="example-chip" data-prompt="Balada acústica melancólica com violão e voz feminina">Balada acústica</span>
+      </div>
+
+      <textarea id="prompt" placeholder="Descreva o estilo, mood, instrumentos e cenário da música que você quer gerar (mínimo 10 caracteres)..."></textarea>
+
+      <label for="lyrics">Letra (opcional — deixe vazio para instrumental)</label>
+      <textarea id="lyrics" placeholder="[Verse]&#10;Sua letra aqui...&#10;&#10;[Chorus]&#10;Refrão..."></textarea>
+
+      <div class="checkbox-row">
+        <input type="checkbox" id="instrumental">
+        <label for="instrumental" style="margin: 0;">Instrumental (sem vocais)</label>
+      </div>
+
+      <label for="model">Modelo</label>
+      <select id="model">
+        <option value="minimax/music-2.0" selected>MiniMax Music 2.0 (recomendado)</option>
+        <option value="minimax/music-2.6">MiniMax Music 2.6 (mais novo)</option>
+        <option value="minimax/music-1.5">MiniMax Music 1.5 (mais barato)</option>
+        <option value="music-01">MiniMax Music 01 (legado)</option>
+      </select>
+
+      <button id="generate-btn" onclick="generateMusic()">🎶 Gerar Música</button>
+
+      <div id="status"></div>
+      <div id="result"></div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // CONFIGURAÇÃO: troque pela URL do seu backend no Render
+    // após fazer o deploy. Algo como:
+    //   https://suno-studio-backend.onrender.com
+    // ============================================================
+    const BACKEND_URL = "https://meu-backend-ia-2.onrender.com";
+
+    // Chips de exemplo — preenche o prompt ao clicar
+    document.querySelectorAll(".example-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        document.getElementById("prompt").value = chip.dataset.prompt;
+      });
+    });
+
+    const statusEl = document.getElementById("status");
+    const resultEl = document.getElementById("result");
+    const btn = document.getElementById("generate-btn");
+
+    function showStatus(message, type = "info") {
+      statusEl.className = `show ${type}`;
+      statusEl.innerHTML = message;
+    }
+
+    function hideStatus() {
+      statusEl.className = "";
+      statusEl.innerHTML = "";
+    }
+
+    function setLoading(loading) {
+      btn.disabled = loading;
+      btn.innerHTML = loading
+        ? '<span class="spinner"></span>Gerando... (pode levar ~1 min)'
+        : '🎶 Gerar Música';
+    }
+
+    async function generateMusic() {
+      const prompt = document.getElementById("prompt").value.trim();
+      const lyrics = document.getElementById("lyrics").value.trim();
+      const instrumental = document.getElementById("instrumental").checked;
+      const model = document.getElementById("model").value;
+
+      // Validação client-side
+      if (!prompt || prompt.length < 10) {
+        showStatus("⚠️ Por favor descreva a música com pelo menos 10 caracteres.", "error");
+        return;
+      }
+
+      resultEl.innerHTML = "";
+      hideStatus();
+      setLoading(true);
+
+      try {
+        // Passo 1: dispara a geração
+        showStatus("📤 Enviando pedido para a IA...");
+        const startRes = await fetch(`${BACKEND_URL}/generate-music`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, lyrics, instrumental, model }),
+        });
+        const startData = await startRes.json();
+
+        if (!startRes.ok) {
+          throw new Error(startData.error || `Erro ${startRes.status}`);
+        }
+
+        const taskId = startData.id;
+        showStatus(`⏳ Música em geração... (id: <code>${taskId}</code>)`);
+
+        // Passo 2: consulta o status (o backend faz polling interno)
+        const statusRes = await fetch(`${BACKEND_URL}/music-status/${encodeURIComponent(taskId)}`);
+        const data = await statusRes.json();
+
+        if (data.status === "completed" && data.audio_url) {
+          showStatus(`✅ Música pronta! (${(data.duration_ms/1000).toFixed(1)}s, ${data.sample_rate}Hz)`, "success");
+          resultEl.innerHTML = `
+            <audio controls src="${data.audio_url}"></audio>
+            <br>
+            <a class="download-link" href="${data.audio_url}" download="suno-studio.mp3" target="_blank">
+              ⬇️ Baixar MP3
+            </a>
+          `;
+        } else if (data.status === "timeout") {
+          showStatus("⏰ A geração demorou mais que 10 minutos. Tente novamente.", "error");
+        } else if (data.status === "error") {
+          showStatus(`❌ Erro na geração: ${data.error || "desconhecido"}`, "error");
+        } else {
+          showStatus(`Status: ${data.status}`, "info");
+        }
+      } catch (err) {
+        console.error(err);
+        showStatus(`❌ Erro: ${err.message}`, "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+  </script>
+</body>
+</html>
