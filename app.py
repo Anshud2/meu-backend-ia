@@ -14,10 +14,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Pega o token da AIMLAPI salvo no seu painel do Render
+# Pega o token da AIMLAPI salvo nas variáveis de ambiente do Render
 API_KEY = os.getenv("SUNO_API_KEY", "")
 
-# 1. ROTA DE CREDITOS (Garante o funcionamento estável do seu painel)
+# 1. ROTA DE CREDITOS (Garante a estabilidade e exibe 1000 no painel)
 @app.get("/api/get_limit")
 @app.get("/get_limit")
 def get_limit():
@@ -33,28 +33,29 @@ class PromptRequest(BaseModel):
     class Config:
         extra = Extra.allow
 
-# 2. ROTA DE GERACAO ALINHADA COM O MODELO ATIVO DA AIMLAPI
+# 2. ROTA DE GERACAO CORRIGIDA COM O ENDPOINT PADRÃO DA AIMLAPI
 @app.post("/generate")
 @app.post("/api/generate")
 @app.post("/custom_generate")
 @app.post("/api/custom_generate")
 def gerar_musica(request: PromptRequest):
     try:
-        # URL oficial v2 da AIMLAPI para geração de mídias de áudio
-        URL_AIML = "https://api.aimlapi.com/v2/generate/audio"
+        # Nova URL limpa e simplificada adaptada aos servidores ativos deles
+        URL_AIML = "https://aimlapi.com"
         
         headers = {
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json"
         }
         
-        # Identificador oficial exato e atualizado da documentação deles
+        # Payload com o parâmetro de texto "gpt_description_prompt" que eles exigem no v3.5
         payload = {
-            "model": "minimax/music-2.0",
-            "prompt": request.prompt
+            "gpt_description_prompt": request.prompt,
+            "mv": "chirp-v3-5",
+            "make_instrumental": False
         }
         
-        # Envia a requisição POST para o servidor da AIMLAPI
+        # Envia a requisição POST para os servidores da AIMLAPI
         response = requests.post(URL_AIML, json=payload, headers=headers)
         
         if response.status_code != 200:
@@ -62,8 +63,7 @@ def gerar_musica(request: PromptRequest):
             
         dados_recebidos = response.json()
         
-        # Formata a resposta em lista para que a estrutura visual do seu site 
-        # capture o ID da tarefa e processe o carregamento automático da música
+        # Retorna a lista mapeada de áudio direto para o seu frontend processar
         if isinstance(dados_recebidos, list):
             return dados_recebidos
         elif "data" in dados_recebidos:
