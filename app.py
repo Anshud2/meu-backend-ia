@@ -1,20 +1,9 @@
 ```python
-   """
-   Suno Studio - Backend + Frontend de geracao de musica via AIMLAPI.
-
-   IMPORTANTE:
-   A AIMLAPI NAO oferece o modelo "Suno" oficialmente. A propria AIMLAPI afirma em
-   sua pagina https://aimlapi.com/suno-ai-api:
-     "Suno does not provide an official API and we do not sell or resell Suno.
-      Instead, we offer access to high-quality AI music models, including ElevenLabs
-      and MiniMax..."
-
-   Por isso, este backend usa o modelo minimax/music-2.0 (MiniMax Music 2.0),
-   que e o modelo de musica mais capaz da AIMLAPI no momento: gera musicas
-   completas com vocais naturais e instrumentacao detalhada, ate 4 minutos.
-
-   Este app tambem serve o frontend (index.html) na rota raiz.
-   """
+   
+   Suno Studio Backend - gera musica via AIMLAPI.
+   Usa o modelo minimax/music-2.0 (a AIMLAPI nao oferece Suno oficial).
+   Tambem serve o frontend HTML em /.
+   
 
    import os
    import time
@@ -22,10 +11,6 @@
    import requests
    from flask import Flask, request, jsonify, send_from_directory
    from flask_cors import CORS
-
-   # -----------------------------------------------------------------------------
-   # Configuracao
-   # -----------------------------------------------------------------------------
 
    logging.basicConfig(
        level=logging.INFO,
@@ -35,54 +20,35 @@
 
    app = Flask(__name__, static_folder=".", static_url_path="")
 
-   # Permite que o site converse com este backend. Em producao, considere
-   # restringir ao seu dominio.
    CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-   # Chave da AIMLAPI - configurada como secret no painel do Render.
    AIML_API_KEY = os.getenv("AIML_API_KEY")
    if not AIML_API_KEY:
-       log.warning("AIMLAPI_KEY nao definida - defina a variavel no Render antes do deploy.")
+       log.warning("AIML_API_KEY nao definida - adicione no Environment do Render.")
 
-   # URL base da AIMLAPI.
    AIMLAPI_BASE = "https://api.aimlapi.com/v2/generate/audio"
 
-   # Modelo padrao usado para todas as geracoes.
    DEFAULT_MODEL = "minimax/music-2.0"
 
-   # Timeout e intervalo de polling para o endpoint de status.
-   POLL_TIMEOUT_SECONDS = 600   # 10 minutos no total
-   POLL_INTERVAL_SECONDS = 10   # checa a cada 10s
+   POLL_TIMEOUT_SECONDS = 600
+   POLL_INTERVAL_SECONDS = 10
 
-
-   # -----------------------------------------------------------------------------
-   # Helpers
-   # -----------------------------------------------------------------------------
 
    def _aimlapi_headers():
        if not AIML_API_KEY:
-           raise RuntimeError("AIMLAPI_KEY nao configurada no servidor.")
+           raise RuntimeError("AIML_API_KEY nao configurada no servidor.")
        return {
-           "Authorization": f"Bearer {AIML_API_KEY}",
+           "Authorization": "Bearer " + AIML_API_KEY,
            "Content-Type": "application/json",
        }
 
 
    def _default_lyrics_for_instrumental():
-       """
-       Para o modo instrumental, a AIMLAPI exige um campo lyrics nao vazio.
-       Usamos um placeholder instrumental.
-       """
        return "[Instrumental]\n[Verse]\n[Outro]\n"
 
 
-   # -----------------------------------------------------------------------------
-   # Rotas do Frontend
-   # -----------------------------------------------------------------------------
-
    @app.route("/", methods=["GET"])
    def index():
-       """Serve o frontend HTML (index.html)."""
        try:
            return send_from_directory(".", "index.html")
        except Exception as e:
@@ -92,34 +58,11 @@
 
    @app.route("/health", methods=["GET"])
    def health():
-       """Health check usado pelo Render para monitorar o servico."""
        return jsonify({"status": "healthy"}), 200
 
 
-   # -----------------------------------------------------------------------------
-   # Rotas da API (prefixo /api)
-   # -----------------------------------------------------------------------------
-
    @app.route("/api/generate-music", methods=["POST"])
    def generate_music():
-       """
-       Recebe um pedido de geracao e dispara a tarefa na AIMLAPI.
-
-       Body esperado (JSON):
-       {
-         "prompt": "Lo-fi hip hop com piano suave e chuva ao fundo",
-         "lyrics": "[Verse]\\n...\\n[Chorus]\\n...",
-         "instrumental": false,
-         "model": "minimax/music-2.0"
-       }
-
-       Retorna (200):
-       {
-         "id": "<generation_id>",
-         "status": "queued" | "generating",
-         "model": "minimax/music-2.0"
-       }
-       """
        try:
            data = request.get_json(silent=True) or {}
            prompt = (data.get("prompt") or "").strip()
@@ -127,19 +70,17 @@
            instrumental = bool(data.get("instrumental", False))
            model = data.get("model") or DEFAULT_MODEL
 
-           # Validacao: prompt obrigatorio (10-2000 chars).
            if not prompt:
-               return jsonify({"error": "O campo 'prompt' e obrigatorio."}), 400
+               return jsonify({"error": "O campo prompt e obrigatorio."}), 400
            if len(prompt) < 10:
-               return jsonify({"error": "O 'prompt' precisa ter pelo menos 10 caracteres."}), 400
+               return jsonify({"error": "O prompt precisa ter pelo menos 10 caracteres."}), 400
            if len(prompt) > 2000:
-               return jsonify({"error": "O 'prompt' nao pode ter mais que 2000 caracteres."}), 400
+               return jsonify({"error": "O prompt nao pode ter mais que 2000 caracteres."}), 400
 
-           # Se for instrumental, injeta lyrics placeholder.
            if instrumental or not lyrics:
                lyrics = _default_lyrics_for_instrumental()
            elif len(lyrics) > 3000:
-               return jsonify({"error": "A letra ('lyrics') nao pode ter mais que 3000 caracteres."}), 400
+               return jsonify({"error": "A letra nao pode ter mais que 3000 caracteres."}), 400
 
            payload = {
                "model": model,
@@ -172,7 +113,7 @@
            gen_id = body.get("id")
            if not gen_id:
                log.error("AIMLAPI nao retornou id: %s", body)
-               return jsonify({"error": "AIMLAPI nao retornou um ID de geracao.", "details": body}), 502
+               return jsonify({"error": "AIMLAPI nao retornou um ID.", "details": body}), 502
 
            return jsonify({
                "id": gen_id,
@@ -193,18 +134,6 @@
 
    @app.route("/api/music-status/<task_id>", methods=["GET"])
    def music_status(task_id):
-       """
-       Consulta o status de uma tarefa de geracao.
-       Faz polling internamente em loop ate completar OU estourar o timeout.
-
-       Retorna (200) quando completed:
-       {
-         "id": "<generation_id>",
-         "status": "completed",
-         "audio_url": "https://cdn.aimlapi.com/.../output.mp3?...",
-         "duration_ms": 107102
-       }
-       """
        try:
            if not task_id:
                return jsonify({"error": "task_id e obrigatorio."}), 400
@@ -262,7 +191,6 @@
                        "details": err,
                    }), 502
 
-               # ainda queued/generating - espera e tenta de novo
                time.sleep(POLL_INTERVAL_SECONDS)
 
        except RuntimeError as e:
@@ -276,21 +204,12 @@
            return jsonify({"error": "Erro interno do servidor.", "details": str(e)}), 500
 
 
-   # -----------------------------------------------------------------------------
-   # Utilitarios
-   # -----------------------------------------------------------------------------
-
    def _safe_json(resp):
-       """Tenta fazer parse do JSON sem quebrar se vier HTML/texto."""
        try:
            return resp.json()
        except ValueError:
            return {"raw": resp.text[:500]}
 
-
-   # -----------------------------------------------------------------------------
-   # Entry-point (usado pelo Gunicorn no Render e em dev local)
-   # -----------------------------------------------------------------------------
 
    if __name__ == "__main__":
        port = int(os.environ.get("PORT", 5000))
