@@ -1,19 +1,19 @@
 ```python
-   
-   Suno Studio — Backend + Frontend de geração de música via AIMLAPI.
+   """
+   Suno Studio - Backend + Frontend de geracao de musica via AIMLAPI.
 
    IMPORTANTE:
-   A AIMLAPI NÃO oferece o modelo "Suno" oficialmente. A própria AIMLAPI afirma em
-   sua página https://aimlapi.com/suno-ai-api:
+   A AIMLAPI NAO oferece o modelo "Suno" oficialmente. A propria AIMLAPI afirma em
+   sua pagina https://aimlapi.com/suno-ai-api:
      "Suno does not provide an official API and we do not sell or resell Suno.
       Instead, we offer access to high-quality AI music models, including ElevenLabs
       and MiniMax..."
 
-   Por isso, este backend usa o modelo `minimax/music-2.0` (MiniMax Music 2.0),
-   que é o modelo de música mais capaz da AIMLAPI no momento: gera músicas
-   completas com vocais naturais e instrumentação detalhada, até 4 minutos.
+   Por isso, este backend usa o modelo minimax/music-2.0 (MiniMax Music 2.0),
+   que e o modelo de musica mais capaz da AIMLAPI no momento: gera musicas
+   completas com vocais naturais e instrumentacao detalhada, ate 4 minutos.
 
-   Este app também serve o frontend (index.html) na rota raiz.
+   Este app tambem serve o frontend (index.html) na rota raiz.
    """
 
    import os
@@ -24,7 +24,7 @@
    from flask_cors import CORS
 
    # -----------------------------------------------------------------------------
-   # Configuração
+   # Configuracao
    # -----------------------------------------------------------------------------
 
    logging.basicConfig(
@@ -35,19 +35,19 @@
 
    app = Flask(__name__, static_folder=".", static_url_path="")
 
-   # Permite que o site converse com este backend. Em produção, considere
-   # restringir ao seu domínio.
+   # Permite que o site converse com este backend. Em producao, considere
+   # restringir ao seu dominio.
    CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-   # Chave da AIMLAPI — configurada como secret no painel do Render.
+   # Chave da AIMLAPI - configurada como secret no painel do Render.
    AIML_API_KEY = os.getenv("AIML_API_KEY")
    if not AIML_API_KEY:
-       log.warning("AIML_API_KEY nao definida — defina a variavel no Render antes do deploy.")
+       log.warning("AIMLAPI_KEY nao definida - defina a variavel no Render antes do deploy.")
 
    # URL base da AIMLAPI.
    AIMLAPI_BASE = "https://api.aimlapi.com/v2/generate/audio"
 
-   # Modelo padrão usado para todas as gerações.
+   # Modelo padrao usado para todas as geracoes.
    DEFAULT_MODEL = "minimax/music-2.0"
 
    # Timeout e intervalo de polling para o endpoint de status.
@@ -59,18 +59,18 @@
    # Helpers
    # -----------------------------------------------------------------------------
 
-   def _aimlapi_headers() -> dict:
+   def _aimlapi_headers():
        if not AIML_API_KEY:
-           raise RuntimeError("AIML_API_KEY nao configurada no servidor.")
+           raise RuntimeError("AIMLAPI_KEY nao configurada no servidor.")
        return {
            "Authorization": f"Bearer {AIML_API_KEY}",
            "Content-Type": "application/json",
        }
 
 
-   def _default_lyrics_for_instrumental() -> str:
+   def _default_lyrics_for_instrumental():
        """
-       Para o modo instrumental, a AIMLAPI exige um campo `lyrics` nao vazio.
+       Para o modo instrumental, a AIMLAPI exige um campo lyrics nao vazio.
        Usamos um placeholder instrumental.
        """
        return "[Instrumental]\n[Verse]\n[Outro]\n"
@@ -108,9 +108,9 @@
        Body esperado (JSON):
        {
          "prompt": "Lo-fi hip hop com piano suave e chuva ao fundo",
-         "lyrics": "[Verse]\\n...\\n[Chorus]\\n...",   # opcional
-         "instrumental": false,                          # opcional
-         "model": "minimax/music-2.0"                    # opcional
+         "lyrics": "[Verse]\\n...\\n[Chorus]\\n...",
+         "instrumental": false,
+         "model": "minimax/music-2.0"
        }
 
        Retorna (200):
@@ -192,7 +192,7 @@
 
 
    @app.route("/api/music-status/<task_id>", methods=["GET"])
-   def music_status(task_id: str):
+   def music_status(task_id):
        """
        Consulta o status de uma tarefa de geracao.
        Faz polling internamente em loop ate completar OU estourar o timeout.
@@ -217,7 +217,7 @@
                    return jsonify({
                        "id": task_id,
                        "status": "timeout",
-                       "error": f"Geracao nao completou em {POLL_TIMEOUT_SECONDS}s.",
+                       "error": "Geracao nao completou em %ds." % POLL_TIMEOUT_SECONDS,
                    }), 504
 
                log.info("Poll %s (%.1fs)", task_id, elapsed)
@@ -262,7 +262,7 @@
                        "details": err,
                    }), 502
 
-               # ainda queued/generating → espera e tenta de novo
+               # ainda queued/generating - espera e tenta de novo
                time.sleep(POLL_INTERVAL_SECONDS)
 
        except RuntimeError as e:
@@ -280,7 +280,7 @@
    # Utilitarios
    # -----------------------------------------------------------------------------
 
-   def _safe_json(resp: requests.Response):
+   def _safe_json(resp):
        """Tenta fazer parse do JSON sem quebrar se vier HTML/texto."""
        try:
            return resp.json()
