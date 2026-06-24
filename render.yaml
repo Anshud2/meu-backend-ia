@@ -1,5 +1,4 @@
-
- ```yaml
+```yaml
    services:
      - type: web
        name: suno-studio-backend
@@ -7,8 +6,8 @@
        plan: free
        region: oregon
        branch: main
-       buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
-       startCommand: "gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app --timeout 120"
+       buildCommand: 'pip install --upgrade pip && pip install -r requirements.txt'
+       startCommand: 'gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app --timeout 120'
        healthCheckPath: /health
        autoDeploy: true
        envVars:
